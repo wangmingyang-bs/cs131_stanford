@@ -126,3 +126,4 @@ dmypy.json
 # pycharm
 .idea/
 .iml
+.DS_Store

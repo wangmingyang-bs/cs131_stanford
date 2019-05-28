@@ -16,12 +16,7 @@ def load(image_path):
     Returns:
         out: numpy array of shape(image_height, image_width, 3).
     """
-    out = None
-
-    ### YOUR CODE HERE
-    # Use skimage io.imread
-    pass
-    ### END YOUR CODE
+    out = io.imread(image_path)
 
     # Let's convert the image to be between the correct range.
     out = out.astype(np.float64) / 255
@@ -42,13 +37,7 @@ def dim_image(image):
         out: numpy array of shape(image_height, image_width, 3).
     """
 
-    out = None
-
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
-
-    return out
+    return 0.5 * image ** 2
 
 
 def convert_to_grey_scale(image):
@@ -63,13 +52,8 @@ def convert_to_grey_scale(image):
     Returns:
         out: numpy array of shape(image_height, image_width).
     """
-    out = None
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
-
-    return out
+    return color.rgb2gray(image)
 
 
 def rgb_exclusion(image, channel):
@@ -83,11 +67,14 @@ def rgb_exclusion(image, channel):
         out: numpy array of shape(image_height, image_width, 3).
     """
 
-    out = None
-
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    out = np.copy(image)
+    
+    if channel == "R":
+        out[:, :, 0] = 0
+    elif channel == "G":
+        out[:, :, 1] = 0
+    elif channel == "B":
+        out[:, :, 2] = 0
 
     return out
 
@@ -104,11 +91,14 @@ def lab_decomposition(image, channel):
     """
 
     lab = color.rgb2lab(image)
-    out = None
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    out = None
+    if channel == "L":
+        out = lab[:, :, 0]
+    elif channel == "A":
+        out = lab[:, :, 1]
+    elif channel == "B":
+        out = lab[:, :, 2]
 
     return out
 
@@ -125,11 +115,14 @@ def hsv_decomposition(image, channel='H'):
     """
 
     hsv = color.rgb2hsv(image)
-    out = None
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    out = None
+    if channel == "H":
+        out = hsv[:, :, 0]
+    elif channel == "S":
+        out = hsv[:, :, 1]
+    elif channel == "V":
+        out = hsv[:, :, 2]
 
     return out
 
@@ -152,11 +145,11 @@ def mix_images(image1, image2, channel1, channel2):
         out: numpy array of shape(image_height, image_width, 3).
     """
 
-    out = None
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
-
+    image_width = image1.shape[1]
+    image1_exclude = rgb_exclusion(image1, channel1)
+    image2_exclude = rgb_exclusion(image2, channel2)
+    out = image1_exclude
+    out[:, image_width//2:, :] = image2_exclude[:, image_width//2:, :]
     return out
 
 
@@ -180,10 +173,17 @@ def mix_quadrants(image):
     Returns:
         out: numpy array of shape(image_height, image_width, 3).
     """
-    out = None
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    image_height, image_width = image.shape[:2]
+    image_exclude_red_1 = rgb_exclusion(image[:image_height//2, :image_width//2, :], "R")
+    image_exclude_red_2 = rgb_exclusion(image[image_height//2:, image_width//2:, :], "R")
+    image_dim = dim_image(image[:image_height//2, image_width//2:, :])
+    image_bright = np.sqrt(image[image_height//2:, :image_width//2, :])
+    
+    out = np.empty_like(image)
+    out[:image_height//2, :image_width//2, :] = image_exclude_red_1
+    out[image_height//2:, image_width//2:, :] = image_exclude_red_2
+    out[image_height//2:, :image_width//2, :] = image_bright
+    out[:image_height//2, image_width//2:, :] = image_dim
 
     return out
