@@ -8,6 +8,7 @@ Python Version: 3.5+
 """
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 def conv(image, kernel):
     """ An implementation of convolution filter.
@@ -291,10 +292,8 @@ def canny(img, kernel_size=5, sigma=1.4, high=20, low=15):
     grad_mag, grad_theta = gradient(img_denoise)
     grad_nms = non_maximum_suppression(grad_mag, grad_theta)
     strong_edge, weak_edge = double_thresholding(grad_nms, high, low)
-    edge_pos = link_edges(strong_edge, weak_edge)
+    edge = link_edges(strong_edge, weak_edge)
 
-    edge = np.zeros_like(img)
-    edge[edge_pos] = grad_nms[edge_pos]
     return edge
 
 
@@ -331,8 +330,10 @@ def hough_transform(img):
     # Transform each point (x, y) in image
     # Find rho corresponding to values in thetas
     # and increment the accumulator in the corresponding coordiate.
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    
+    for y, x in zip(ys, xs):
+        rho = x * cos_t + y * sin_t
+        rho_idx = (np.floor(rho) + diag_len).astype(np.int)
+        accumulator[rho_idx, np.arange(num_thetas)] += 1 
 
     return accumulator, rhos, thetas
