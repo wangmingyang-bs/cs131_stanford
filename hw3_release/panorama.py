@@ -262,7 +262,7 @@ def hog_descriptor(patch, pixels_per_cell=(8,8)):
 
     # Unsigned gradients
     G = np.sqrt(Gx**2 + Gy**2)
-    theta = (np.arctan2(Gy, Gx) * 180 / np.pi) % 180
+    theta = (np.arctan2(Gy, Gx) * 180 / np.pi).astype(int) % 180
 
     # Group entries of G and theta into cells of shape pixels_per_cell, (M, N)
     #   G_cells.shape = theta_cells.shape = (H//M, W//N)
@@ -276,9 +276,19 @@ def hog_descriptor(patch, pixels_per_cell=(8,8)):
     cells = np.zeros((rows, cols, n_bins))
 
     # Compute histogram per cell
-    ### YOUR CODE HERE
-    pass
-    ### YOUR CODE HERE
+    for i in range(rows):
+        for j in range(cols):
+            G_patch = G_cells[i, j]
+            theta_patch = theta_cells[i, j]
+
+            for m in range(pixels_per_cell[0]):
+                for n in range(pixels_per_cell[1]):
+                    bin_idx = int(theta_patch[m, n] / degrees_per_bin)
+                    # print(theta_patch[m, n], bin_idx)
+                    cells[i, j, bin_idx] += G_patch[m, n]
+            
+        block = cells.flatten()
+        block = block / np.linalg.norm(block)
 
     return block
 
