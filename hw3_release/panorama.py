@@ -43,9 +43,13 @@ def harris_corners(img, window_size=3, k=0.04):
     dx = filters.sobel_v(img)
     dy = filters.sobel_h(img)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    dx2 = convolve(dx**2, window)
+    dy2 = convolve(dy**2, window)
+    dxy = convolve(dx * dy, window)
+
+    det_m = dx2 * dy2 - dxy**2
+    trace_m = dx2 + dy2
+    response = det_m - k * trace_m**2
 
     return response
 
@@ -68,10 +72,9 @@ def simple_descriptor(patch):
     Returns:
         feature: 1D array of shape (H * W)
     """
-    feature = []
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    patch_normal = (patch - np.mean(patch)) / (np.std(patch) + 1e-5)
+    feature = patch_normal.flatten()
+
     return feature
 
 
@@ -122,10 +125,13 @@ def match_descriptors(desc1, desc2, threshold=0.5):
     N = desc1.shape[0]
     dists = cdist(desc1, desc2)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    sorted_dist = np.sort(dists)
+    closet_point_idx = np.argmin(dists, axis=1)
+    criterion = sorted_dist[:, 0] / sorted_dist[:, 1] < threshold
+    match_1 = np.nonzero(criterion)[0]
+    match_2 = closet_point_idx[match_1]
 
+    matches = np.hstack((match_1[:,np.newaxis], match_2[:, np.newaxis]))
     return matches
 
 
@@ -145,13 +151,23 @@ def fit_affine_matrix(p1, p2):
 
     assert (p1.shape[0] == p2.shape[0]),\
         'Different number of points in p1 and p2'
+
     p1 = pad(p1)
     p2 = pad(p2)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    M, P = p1.shape
 
+    A = np.zeros((M * P, P * P))
+    b =  np.zeros((M * P, ))
+    count = 0
+    for i in range(M):
+        for j in range(P):
+            A[count, j*P:(j+1)*P] = p2[i]
+            b[count] = p1[i,j]
+            count += 1
+
+    par, _, _, _ = np.linalg.lstsq(A, b, rcond=None)      
+    H = par.reshape((P, P)).T
     # Sometimes numerical issues cause least-squares to produce the last
     # column which is not exactly [0, 0, 1]
     H[:,2] = np.array([0, 0, 1])
@@ -194,10 +210,23 @@ def ransac(keypoints1, keypoints2, matches, n_iters=200, threshold=20):
     max_inliers = np.zeros(N)
     n_inliers = 0
 
-    # RANSAC iteration start
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    for i in range(n_iters):
+        # select samples
+        sample = np.random.choice(N, n_samples, replace=False)
+
+        # fit model
+        model = fit_affine_matrix(unpad(matched1[sample]), unpad(matched2[sample]))
+
+        # calculate inliers
+        matched1_predict = matched2 @ model
+        dists = np.linalg.norm(matched1_predict - matched1, axis=1)
+
+        if np.sum(dists <= threshold) > n_inliers:
+            n_inliers = np.sum(dists < threshold)
+            max_inliers = np.nonzero(dists < threshold)
+            H = model
+
+    
     print(H)
     return H, orig_matches[max_inliers]
 
