@@ -201,7 +201,7 @@ def ransac(keypoints1, keypoints2, matches, n_iters=200, threshold=20):
     matches = matches.copy()
 
     N = matches.shape[0]
-    print(N)
+    # print(N)
     n_samples = int(N * 0.2)
 
     matched1 = pad(keypoints1[matches[:,0]])
@@ -227,7 +227,7 @@ def ransac(keypoints1, keypoints2, matches, n_iters=200, threshold=20):
             H = model
 
     
-    print(H)
+    # print(H)
     return H, orig_matches[max_inliers]
 
 
@@ -313,6 +313,7 @@ def linear_blend(img1_warped, img2_warped):
     out_H, out_W = img1_warped.shape # Height and width of output space
     img1_mask = (img1_warped != 0)  # Mask == 1 inside the image
     img2_mask = (img2_warped != 0)  # Mask == 1 inside the image
+    img_no_overlap_mask = np.logical_not(np.logical_and(img1_mask, img2_mask))
 
     # Find column of middle row where warped image 1 ends
     # This is where to end weight mask for warped image 1
@@ -322,9 +323,22 @@ def linear_blend(img1_warped, img2_warped):
     # This is where to start weight mask for warped image 2
     left_margin = np.argmax(img2_mask[out_H//2, :].reshape(1, out_W), 1)[0]
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    weight = np.linspace(0, 1, num=right_margin-left_margin)
+    weight_mat = np.tile(weight, (out_H, 1))
+
+    img1_warped_weighted = np.copy(img1_warped)
+    img1_warped_weighted[:, right_margin:] = 0
+    img1_warped_weighted[:, left_margin:right_margin] *= (1 - weight_mat)
+
+    img1_warped_weighted[np.logical_and(img_no_overlap_mask, img1_mask)] = img1_warped[np.logical_and(img_no_overlap_mask, img1_mask)]
+
+    img2_warped_weighted = np.copy(img2_warped)
+    img2_warped_weighted[:, :left_margin] = 0
+    img2_warped_weighted[:, left_margin:right_margin] *= weight_mat
+    img2_warped_weighted[np.logical_and(img_no_overlap_mask, img2_mask)] = img2_warped[np.logical_and(img_no_overlap_mask, img2_mask)]
+
+
+    merged = img1_warped_weighted + img2_warped_weighted
 
     return merged
 
@@ -363,8 +377,21 @@ def stitch_multiple_images(imgs, desc_func=simple_descriptor, patch_size=5):
         mtchs = match_descriptors(descriptors[i], descriptors[i+1], 0.7)
         matches.append(mtchs)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    transforms = [np.eye(3)]
+    for i in range(len(matches)):
+        transform_to_prev, robust_matches = ransac(keypoints[i], keypoints[i+1], matches[i], threshold=1)
+        transforms.append(transform_to_prev @ transforms[-1])
+
+    output_shape, offset = get_output_space(imgs[0], imgs[1:], transforms[1:])
+
+    imgs_warped = []
+    for i in range(len(transforms)):
+        img_warped = warp_image(imgs[i], transforms[i], output_shape, offset)
+        img_warped[img_warped == -1] = 0 
+        imgs_warped.append(img_warped)
+
+    panorama = imgs_warped[0]
+    for img in imgs_warped[1:]:
+        panorama = linear_blend(panorama, img)
 
     return panorama

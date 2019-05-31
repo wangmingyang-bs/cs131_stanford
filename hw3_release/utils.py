@@ -96,7 +96,6 @@ def get_output_space(img_ref, imgs, transforms):
     Returns:
         output_shape
     """
-
     assert (len(imgs) == len(transforms))
 
     r, c = img_ref.shape
