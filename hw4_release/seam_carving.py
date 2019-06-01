@@ -26,13 +26,10 @@ def energy_function(image):
         out: numpy array of shape (H, W)
     """
     H, W, _ = image.shape
-    out = np.zeros((H, W))
     gray_image = color.rgb2gray(image)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
-
+    grad_list = np.gradient(gray_image)
+    out = np.abs(grad_list[0]) + np.abs(grad_list[1])
     return out
 
 
@@ -76,9 +73,17 @@ def compute_cost(image, energy, axis=1):
     cost[0] = energy[0]
     paths[0] = 0  # we don't care about the first row of paths
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    # compute cost by dynammic programming
+    cost_pad = np.pad(cost, ((0, 0), (1, 1)), 'constant', constant_values=np.Infinity)
+    for row_idx in range(1, H):
+        prev_cost = cost_pad[row_idx - 1]
+        prev_neigbor_cost = np.vstack((prev_cost[0:W], prev_cost[1:W+1], prev_cost[2:W+2]))
+        prev_neighbor_shift = np.argmin(prev_neigbor_cost, axis=0) - 1
+        prev_neighbor_idx =  prev_neighbor_shift + np.arange(1, W+1) 
+        cost_pad[row_idx, 1:W+1] = energy[row_idx] + prev_cost[prev_neighbor_idx]
+        paths[row_idx] = prev_neighbor_shift
+
+    cost = cost_pad[:, 1:W+1]
 
     if axis == 0:
         cost = np.transpose(cost, (1, 0))
@@ -114,9 +119,9 @@ def backtrack_seam(paths, end):
     # Initialization
     seam[H-1] = end
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    for i in range(H-2, -1, -1):
+        seam[i] = seam[i + 1] + paths[i+1, seam[i+1]]
+
 
     # Check that seam only contains values in [0, W-1]
     assert np.all(np.all([seam >= 0, seam < W], axis=0)), "seam contains values out of bounds"
@@ -142,11 +147,13 @@ def remove_seam(image, seam):
     if len(image.shape) == 2:
         image = np.expand_dims(image, axis=2)
 
-    out = None
+    
     H, W, C = image.shape
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    out = np.zeros((H, W-1, C), dtype=image.dtype)
+    for idx in range(H):
+        idx_W = list(range(seam[idx])) + list(range(seam[idx]+1, W)) 
+        out[idx, :, :] = image[idx, idx_W, :]
+
     out = np.squeeze(out)  # remove last dimension if C == 1
 
     # Make sure that `out` has same type as `image`
@@ -189,9 +196,12 @@ def reduce(image, size, axis=1, efunc=energy_function, cfunc=compute_cost):
 
     assert size > 0, "Size must be greater than zero"
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    while out.shape[1] > size: 
+        energy = efunc(out)
+        cost, paths = cfunc(out, energy)
+        end_with_min_cost = np.argmin(cost[-1])
+        seam = backtrack_seam(paths, end_with_min_cost)
+        out = remove_seam(out, seam)
 
     assert out.shape[1] == size, "Output doesn't have the right shape"
 
@@ -215,10 +225,13 @@ def duplicate_seam(image, seam):
     """
 
     H, W, C = image.shape
-    out = np.zeros((H, W + 1, C))
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    out = np.zeros((H, W + 1, C), dtype=image.dtype)
+
+    for row_idx in range(H):
+        path_idx = seam[row_idx]
+        out[row_idx, :path_idx] = image[row_idx, :path_idx]
+        out[row_idx, path_idx+1:] = image[row_idx, path_idx:]
+        out[row_idx, path_idx] = image[row_idx, path_idx]
 
     return out
 
@@ -254,9 +267,12 @@ def enlarge_naive(image, size, axis=1, efunc=energy_function, cfunc=compute_cost
 
     assert size > W, "size must be greather than %d" % W
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    while out.shape[1] < size:
+        energy = efunc(out)
+        cost, paths = cfunc(out, energy)
+        end_with_min_cost = np.argmin(cost[-1])
+        seam = backtrack_seam(paths, end_with_min_cost)
+        out = duplicate_seam(out, seam)
 
     if axis == 0:
         out = np.transpose(out, (1, 0, 2))
@@ -372,9 +388,16 @@ def enlarge(image, size, axis=1, efunc=energy_function, cfunc=compute_cost):
 
     assert size <= 2 * W, "size must be smaller than %d" % (2 * W)
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    # find seams
+    numberSeams = size - W
+    seams = find_seams(out, numberSeams)
+    seams = np.expand_dims(seams, axis = 2)
+
+    for seam_idx in range(numberSeams):
+
+        seam = np.nonzero(seams[:,:,0] == seam_idx + 1)[1]
+        out = duplicate_seam(out, seam)
+        seams = duplicate_seam(seams, seam)
 
     if axis == 0:
         out = np.transpose(out, (1, 0, 2))
