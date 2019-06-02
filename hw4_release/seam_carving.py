@@ -437,9 +437,31 @@ def compute_forward_cost(image, energy):
             cost[0, j] += np.abs(image[0, j+1] - image[0, j-1])
     paths[0] = 0  # we don't care about the first row of paths
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    # compute cost by dynammic programming
+    cost_pad = np.pad(cost, ((0, 0), (1, 1)), 'constant', constant_values=np.Infinity)
+    image_pad = np.pad(image, ((0, 0), (1, 1)), 'reflect')
+    for row_idx in range(1, H):
+        prev_cost = cost_pad[row_idx - 1]
+        prev_neigbor_cost = np.vstack((prev_cost[0:W], prev_cost[1:W+1], prev_cost[2:W+2]))
+
+        prev_img_row = image[row_idx-1]
+        for col_idx in range(W):
+            cost_L = np.abs(image_pad[row_idx, col_idx+2] - image_pad[row_idx, col_idx]) + \
+                     np.abs(image_pad[row_idx-1, col_idx+1] - image_pad[row_idx, col_idx])
+            cost_U = np.abs(image_pad[row_idx, col_idx+2] - image_pad[row_idx,col_idx]) + \
+                     np.abs(image_pad[row_idx-1, col_idx+2] - image_pad[row_idx-1, col_idx])
+            cost_R = np.abs(image_pad[row_idx, col_idx+2] - image_pad[row_idx,col_idx]) + \
+                     np.abs(image_pad[row_idx-1, col_idx+1] - image_pad[row_idx, col_idx+2])
+
+            prev_neigbor_cost[:, col_idx] += np.asarray([cost_L, cost_U, cost_R])
+
+        prev_neighbor_shift = np.argmin(prev_neigbor_cost, axis=0) - 1
+        prev_neighbor_idx =  prev_neighbor_shift + np.arange(1, W+1) 
+        cost_pad[row_idx, 1:W+1] = prev_neigbor_cost[prev_neighbor_shift+1, np.arange(W)] + energy[row_idx, :]
+        paths[row_idx] = prev_neighbor_shift
+
+    cost = cost_pad[:, 1:W+1]
+
 
     # Check that paths only contains -1, 0 or 1
     assert np.all(np.any([paths == 1, paths == 0, paths == -1], axis=0)), \
