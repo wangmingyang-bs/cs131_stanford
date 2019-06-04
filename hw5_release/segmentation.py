@@ -44,9 +44,19 @@ def kmeans(features, k, num_iters=100):
     assignments = np.zeros(N)
 
     for n in range(num_iters):
-        ### YOUR CODE HERE
-        pass
-        ### END YOUR CODE
+        feature_with_center = np.vstack((features, centers))
+        feature_dist = squareform(pdist(feature_with_center))
+        feature_dist_to_mean = feature_dist[:N, -k:]
+        assignments = np.argmin(feature_dist_to_mean, axis=1)
+        
+        # update center
+        old_centers = np.copy(centers)
+        for i in range(k):
+            feature_idx = np.nonzero(assignments==i)[0]
+            centers[i] = np.mean(features[feature_idx], axis=0)
+        
+        if np.array_equal(old_centers, centers):
+            break
 
     return assignments
 
@@ -80,9 +90,20 @@ def kmeans_fast(features, k, num_iters=100):
     assignments = np.zeros(N)
 
     for n in range(num_iters):
-        ### YOUR CODE HERE
-        pass
-        ### END YOUR CODE
+        features_repeat = np.repeat(features, k, axis=0)
+        centers_repeat = np.tile(centers, (N, 1))
+
+        dist_to_center = np.linalg.norm(features_repeat - centers_repeat, axis=1)
+        dist_to_center = np.reshape(dist_to_center, (N, k))
+        assignments = np.argmin(dist_to_center, axis=1)
+        
+        # update center
+        old_centers = np.copy(centers)
+        for i in range(k):
+            centers[i] = np.mean(features[assignments==i], axis=0)
+        
+        if np.allclose(old_centers, centers):
+            break
 
     return assignments
 
