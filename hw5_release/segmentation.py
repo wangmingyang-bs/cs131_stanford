@@ -153,10 +153,29 @@ def hierarchical_clustering(features, k):
     n_clusters = N
 
     while n_clusters > k:
-        ### YOUR CODE HERE
-        pass
-        ### END YOUR CODE
+        center_mutual_dist = squareform(pdist(centers))
+        closet_idx = np.argpartition(center_mutual_dist, 1, axis=0)
 
+        # merge
+        segment_num = 0
+        proc_already = np.zeros((n_clusters, ),dtype=np.bool)
+        for i in range(n_clusters):
+            if not proc_already[i]:
+                assignments[assignments==i] = segment_num
+
+                if i == closet_idx[closet_idx[i]]:
+                    assignments[assignments==closet_idx[i]] = segment_num
+                    proc_already[closet_idx[i]] = True
+                
+                segment_num+=1
+        
+        # update center
+        n_clusters = segment_num
+        centers = np.zeros((n_clusters, D))
+        for i in range(n_clusters):
+            centers[i] = np.mean(features[assignments==i], axis=0)
+            
+        
     return assignments
 
 
