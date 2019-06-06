@@ -154,11 +154,12 @@ def hierarchical_clustering(features, k):
 
     while n_clusters > k:
         center_mutual_dist = squareform(pdist(centers))
-        closet_idx = np.argpartition(center_mutual_dist, 1, axis=0)
+        closet_idx = np.argpartition(center_mutual_dist, 1, axis=0)[1]
 
         # merge
         segment_num = 0
         proc_already = np.zeros((n_clusters, ),dtype=np.bool)
+
         for i in range(n_clusters):
             if not proc_already[i]:
                 assignments[assignments==i] = segment_num
@@ -193,10 +194,7 @@ def color_features(img):
     img = img_as_float(img)
     features = np.zeros((H*W, C))
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
-
+    features = img.reshape((H*W, C))
     return features
 
 def color_position_features(img):
@@ -222,9 +220,12 @@ def color_position_features(img):
     color = img_as_float(img)
     features = np.zeros((H*W, C+2))
 
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    color_feature = img.reshape((H*W, C))
+    pos_grid = np.mgrid[:H, :W]
+    feature_map = np.dstack((color, pos_grid[0]/H, pos_grid[1]/W))
+    features = np.reshape(feature_map, (H*W, -1))
+
+    features = (features - np.mean(features, axis=0)) / (0.0001 + np.std(features, axis=0))
 
     return features
 
