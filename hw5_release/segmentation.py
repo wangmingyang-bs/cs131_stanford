@@ -238,10 +238,14 @@ def my_features(img):
     Returns:
         features - array of (H * W, C)
     """
+    
+    img_float = img_as_float(img)
+    img_grad_x, img_grad_y = np.gradient(img_float)
+    
     features = None
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+
+
+
     return features
 
 
@@ -262,10 +266,7 @@ def compute_accuracy(mask_gt, mask):
             bigger number is better, where 1.0 indicates a perfect segmentation.
     """
 
-    accuracy = None
-    ### YOUR CODE HERE
-    pass
-    ### END YOUR CODE
+    accuracy = np.mean(mask == mask_gt)
 
     return accuracy
 
